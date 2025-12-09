@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catastrophes Mondiales</title>
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<style>
+body { font-family:Arial; margin:0; padding:0; background:black; color:white;}
+header { background: rgba(0,0,0,0.7); padding:10px 15px; text-align:center; }
+.container { max-width:900px; margin:20px auto; background: rgba(0,0,0,0.8); padding:20px; border-radius:10px;}
+.item { padding:15px; border-bottom:1px solid #444; margin-bottom:10px; border-radius:5px; background: rgba(255,255,255,0.05);}
+.item:last-child { border-bottom:none; }
+.small { font-size:0.9em; color:#ccc; }
+#loading-screen { position:fixed; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; background:black; z-index:9999;}
+.loader { border:8px solid rgba(255,255,255,0.3); border-top:8px solid #fff; border-radius:50%; width:50px; height:50px; animation: spin 2s linear infinite;}
+@keyframes spin {0% {transform:rotate(0deg);}100% {transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader"></div></div>
+
+<header>
+    <h1>Catastrophes Mondiales</h1>
+</header>
+
+<h2 style="text-align:center;">Météo Locale</h2>
+<div class="container" id="weatherContainer">Chargement météo...</div>
+
+<h2 style="text-align:center;">Catastrophes et Événements</h2>
+<div class="container" id="eventsContainer">Chargement catastrophes...</div>
+
+<script>
+// --- Météo locale sans clé ---
+async function fetchWeather() {
+    const container = document.getElementById('weatherContainer');
+    container.innerHTML = 'Chargement météo...';
+
+    if (!navigator.geolocation) {
+        container.innerHTML = "La géolocalisation n'est pas supportée.";
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async pos => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        try {
+            const res = await fetch(`https://wttr.in/${lat},${lon}?format=j1`);
+            const data = await res.json();
+            const current = data.current_condition[0];
+            container.innerHTML = `<div class="item">
+                <strong>Votre position</strong>: ${lat.toFixed(2)}, ${lon.toFixed(2)}<br>
+                Temps: ${current.weatherDesc[0].value}<br>
+                Température: ${current.temp_C}°C<br>
+                Humidité: ${current.humidity}%<br>
+                Vent: ${current.windspeedKmph} km/h
+            </div>`;
+        } catch {
+            container.innerHTML = "Impossible de récupérer la météo locale";
+        }
+    }, () => {
+        container.innerHTML = "Autorisation de géolocalisation refusée.";
+    });
+}
+
+// --- Catastrophes ---
+async function fetchEvents() {
+    const container = document.getElementById('eventsContainer');
+    container.innerHTML = 'Chargement catastrophes...';
+    try {
+        const res = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events');
+        const data = await res.json();
+        container.innerHTML = '';
+        data.events.forEach(event => {
+            const eventTime = new Date(event.geometry[0]?.date || Date.now());
+            const minutesAgo = Math.floor((Date.now() - eventTime)/60000);
+            const lat = event.geometry[0]?.coordinates[1] || 0;
+            const lon = event.geometry[0]?.coordinates[0] || 0;
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `<strong>${event.title}</strong><br>
+            Catégorie: ${event.categories.map(c=>c.title).join(', ')}<br>
+            Localisation: ${lat.toFixed(2)}, ${lon.toFixed(2)}<br>
+            Date: ${eventTime.toLocaleString()}<br>
+            <span class="small">Il y a ${minutesAgo} minutes</span>`;
+            container.appendChild(div);
+        });
+        document.getElementById('loading-screen').style.display = 'none';
+    } catch {
+        container.innerHTML = 'Impossible de charger les catastrophes';
+        document.getElementById('loading-screen').style.display = 'none';
+    }
+}
+
+fetchWeather();
+fetchEvents();
+setInterval(()=>{fetchWeather(); fetchEvents();},60000);
+</script>
+
+</body>
+</html>
