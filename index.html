@@ -3,175 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Catastrophes Mondiales avec Météo Locale</title>
-<link rel="icon" href="favicon.ico" type="image/x-icon">
+<title>Choisir la langue</title>
 <style>
-body { 
-    font-family: Arial, sans-serif; 
-    margin: 0; 
-    padding: 0; 
+body {
+    font-family: Arial, sans-serif;
     background: black;
     color: white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    margin:0;
 }
-header { 
-    background: rgba(0,0,0,0.7); 
-    padding: 10px 15px; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
+.container {
+    text-align:center;
 }
-header h1 { margin:0; font-size: 1.5em; }
-.flags img { width:30px; cursor:pointer; margin-left:10px; }
-.container { 
-    max-width: 900px; 
-    margin: 20px auto; 
-    background: rgba(0,0,0,0.8); 
-    padding: 20px; 
-    border-radius: 10px; 
-    box-shadow: 0px 0px 15px rgba(255,255,255,0.3);
+button {
+    margin:10px;
+    padding:10px 20px;
+    font-size:16px;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
 }
-.item { 
-    padding: 15px; 
-    border-bottom: 1px solid #444; 
-    margin-bottom: 10px;
-    border-radius: 5px;
-    background: rgba(255,255,255,0.05);
-}
-.item:last-child { border-bottom: none; }
-.small { font-size: 0.9em; color: #ccc; }
-#loading-screen {
-    position: fixed;
-    top:0; left:0; width:100%; height:100%;
-    display:flex; justify-content:center; align-items:center;
-    z-index:9999; background:black;
-}
-.loader {
-    border:8px solid rgba(255,255,255,0.3);
-    border-top:8px solid #fff;
-    border-radius:50%;
-    width:50px;
-    height:50px;
-    animation: spin 2s linear infinite;
-}
-@keyframes spin {0% {transform:rotate(0deg);}100% {transform:rotate(360deg);}}
+button:hover { opacity:0.8; }
 </style>
 </head>
 <body>
-
-<div id="loading-screen"><div class="loader"></div></div>
-
-<header>
-    <h1 id="title">Catastrophes Mondiales</h1>
-    <div class="flags">
-        <img src="https://flagcdn.com/fr.svg" alt="FR" data-lang="fr">
-        <img src="https://flagcdn.com/gb.svg" alt="EN" data-lang="en">
-        <img src="https://flagcdn.com/es.svg" alt="ES" data-lang="es">
-        <img src="https://flagcdn.com/de.svg" alt="DE" data-lang="de">
-    </div>
-</header>
-
-<h2 style="text-align:center;">Météo Locale</h2>
-<div class="container" id="weatherContainer">Chargement météo...</div>
-
-<h2 style="text-align:center;">Catastrophes et Événements</h2>
-<div class="container" id="eventsContainer">Chargement catastrophes...</div>
-
-<script>
-let lang = 'fr';
-const translations = {
-    fr: { title:'Catastrophes Mondiales', category:'Catégorie', location:'Localisation', date:'Date', minutes:'Il y a {minutes} minutes', loading:'Chargement...' },
-    en: { title:'Global Disasters', category:'Category', location:'Location', date:'Date', minutes:'{minutes} minutes ago', loading:'Loading...' },
-    es: { title:'Desastres Mundiales', category:'Categoría', location:'Ubicación', date:'Fecha', minutes:'Hace {minutes} minutos', loading:'Cargando...' },
-    de: { title:'Globale Katastrophen', category:'Kategorie', location:'Ort', date:'Datum', minutes:'Vor {minutes} Minuten', loading:'Lade...' },
-};
-
-// --- Changer la langue via les drapeaux ---
-document.querySelectorAll('.flags img').forEach(img => {
-    img.addEventListener('click', () => {
-        lang = img.dataset.lang;
-        document.getElementById('title').innerText = translations[lang].title;
-        fetchWeather();
-        fetchEvents();
-    });
-});
-
-// --- Météo locale avec position ---
-async function fetchWeather() {
-    const container = document.getElementById('weatherContainer');
-    container.innerHTML = translations[lang].loading;
-
-    if (!navigator.geolocation) {
-        container.innerHTML = "La géolocalisation n'est pas supportée.";
-        return;
-    }
-
-    navigator.geolocation.getCurrentPosition(async position => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-
-        try {
-            // wttr.in JSON API (pas besoin de clé)
-            const res = await fetch(`https://wttr.in/${lat},${lon}?format=j1`);
-            const data = await res.json();
-
-            let current = data.current_condition[0];
-            let div = document.createElement('div');
-            div.className = 'item';
-            div.innerHTML = `
-                <strong>Votre position</strong>: ${lat.toFixed(2)}, ${lon.toFixed(2)}<br>
-                Temps: ${current.weatherDesc[0].value}<br>
-                Température: ${current.temp_C}°C<br>
-                Humidité: ${current.humidity}%<br>
-                Vent: ${current.windspeedKmph} km/h
-            `;
-            container.innerHTML = '';
-            container.appendChild(div);
-        } catch {
-            container.innerHTML = "Impossible de récupérer la météo locale";
-        }
-    }, () => {
-        container.innerHTML = "Autorisation de géolocalisation refusée.";
-    });
-}
-
-// --- Catastrophes ---
-async function fetchEvents() {
-    const container = document.getElementById('eventsContainer');
-    container.innerHTML = translations[lang].loading;
-
-    try {
-        const res = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events');
-        const data = await res.json();
-        container.innerHTML = '';
-        for (let event of data.events) {
-            let eventTime = new Date(event.geometry[0]?.date || event.geometry[0]?.time || Date.now());
-            let minutesAgo = Math.floor((Date.now() - eventTime)/60000);
-            let lat = event.geometry[0]?.coordinates[1] || 0;
-            let lon = event.geometry[0]?.coordinates[0] || 0;
-
-            let div = document.createElement('div');
-            div.className = 'item';
-            div.innerHTML = `
-                <strong>${event.title}</strong><br>
-                ${translations[lang].category}: ${event.categories.map(c=>c.title).join(', ')}<br>
-                ${translations[lang].location}: ${lat.toFixed(2)}, ${lon.toFixed(2)}<br>
-                ${translations[lang].date}: ${eventTime.toLocaleString()}<br>
-                <span class="small">${translations[lang].minutes.replace('{minutes}', minutesAgo)}</span>
-            `;
-            container.appendChild(div);
-        }
-        document.getElementById('loading-screen').style.display = 'none';
-    } catch {
-        container.innerHTML = 'Impossible de charger les catastrophes';
-        document.getElementById('loading-screen').style.display = 'none';
-    }
-}
-
-// --- Initialisation ---
-fetchWeather();
-fetchEvents();
-setInterval(()=>{fetchWeather(); fetchEvents();},60000);
-</script>
-
+<div class="container">
+    <h1>Choisir la langue / Select Language</h1>
+    <button onclick="window.location.href='fr.html'">🇫🇷 Français</button>
+    <button onclick="window.location.href='en.html'">🇬🇧 English</button>
+    <button onclick="window.location.href='es.html'">🇪🇸 Español</button>
+    <button onclick="window.location.href='de.html'">🇩🇪 Deutsch</button>
+</div>
 </body>
 </html>
