@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Catastrophes et Météo Mondiales</title>
+<title>Tracker Mondial : Météo, Infos et Catastrophes</title>
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 <style>
     body { 
@@ -13,12 +13,14 @@
         background: black;
         color: white;
     }
-    h1 { 
+    h1, h2 { 
         text-align: center; 
-        padding: 20px; 
-        background: rgba(0, 0, 0, 0.7); 
+        padding: 15px; 
         margin: 0; 
     }
+    h1 { background: rgba(0,0,0,0.7); }
+    h2 { background: rgba(30,30,30,0.7); margin-top: 10px; }
+
     .container { 
         max-width: 900px; 
         margin: 20px auto; 
@@ -27,15 +29,15 @@
         border-radius: 10px; 
         box-shadow: 0px 0px 15px rgba(255, 255, 255, 0.3);
     }
-    .event { 
+    .item { 
         padding: 15px; 
         border-bottom: 1px solid #444; 
         margin-bottom: 10px;
         border-radius: 5px;
         background: rgba(255,255,255,0.05);
     }
-    .event:last-child { border-bottom: none; }
-    .weather { margin-top: 10px; font-size: 0.9em; color: #ccc; }
+    .item:last-child { border-bottom: none; }
+    .small { font-size: 0.9em; color: #ccc; }
 
     #loading-screen {
         position: fixed;
@@ -57,74 +59,105 @@
         height: 50px;
         animation: spin 2s linear infinite;
     }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    #eventsContainer { display: none; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
 <div id="loading-screen"><div class="loader"></div></div>
 
-<h1>Derniers Événements Mondiaux & Météo</h1>
-<div class="container" id="eventsContainer"></div>
+<h1>Tracker Mondial</h1>
+
+<h2>Météo</h2>
+<div class="container" id="weatherContainer">Chargement météo...</div>
+
+<h2>Infos générales</h2>
+<div class="container" id="infoContainer">Chargement infos...</div>
+
+<h2>Catastrophes et Événements</h2>
+<div class="container" id="eventsContainer">Chargement catastrophes...</div>
 
 <script>
-const OPENWEATHER_API_KEY = 'VOTRE_CLE_OPENWEATHER'; // Remplace par ta clé OpenWeatherMap
+const OPENWEATHER_API_KEY = 'VOTRE_CLE_OPENWEATHER'; // Ta clé OpenWeatherMap
 
-async function fetchWeather(lat, lon) {
+// --- Fonction météo ---
+async function fetchWeather() {
     try {
-        let response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&lang=fr&units=metric`);
-        let data = await response.json();
-        return `Météo: ${data.weather[0].description}, Température: ${data.main.temp}°C, Humidité: ${data.main.humidity}%`;
+        const cities = [
+            {name:'Paris', lat:48.8566, lon:2.3522},
+            {name:'New York', lat:40.7128, lon:-74.0060},
+            {name:'Tokyo', lat:35.6895, lon:139.6917},
+        ];
+        const container = document.getElementById('weatherContainer');
+        container.innerHTML = '';
+        for (let city of cities) {
+            let response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&appid=${OPENWEATHER_API_KEY}&lang=fr&units=metric`);
+            let data = await response.json();
+            let div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `<strong>${city.name}</strong>: ${data.weather[0].description}, Température: ${data.main.temp}°C, Humidité: ${data.main.humidity}%`;
+            container.appendChild(div);
+        }
     } catch {
-        return 'Météo non disponible';
+        document.getElementById('weatherContainer').innerHTML = 'Impossible de charger la météo';
     }
 }
 
+// --- Fonction infos générales ---
+async function fetchInfos() {
+    const container = document.getElementById('infoContainer');
+    container.innerHTML = '';
+    // Exemple : quelques infos générales mondiales (tu peux remplacer par API réelles)
+    const infos = [
+        {title:'Heure mondiale', detail: new Date().toLocaleString('fr-FR')},
+        {title:'Population mondiale', detail: '≈ 8 milliards'},
+        {title:'Dernières nouvelles', detail: 'Exemple d’info générale'}
+    ];
+    infos.forEach(info => {
+        let div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<strong>${info.title}</strong><br><span class="small">${info.detail}</span>`;
+        container.appendChild(div);
+    });
+}
+
+// --- Fonction catastrophes ---
 async function fetchEvents() {
     try {
         let response = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events');
         let data = await response.json();
-        let container = document.getElementById('eventsContainer');
-        let loadingScreen = document.getElementById('loading-screen');
-
-        loadingScreen.style.display = 'none';
-        container.style.display = 'block';
+        const container = document.getElementById('eventsContainer');
         container.innerHTML = '';
-
         for (let event of data.events) {
             let eventTime = new Date(event.geometry[0]?.date || event.geometry[0]?.time || Date.now());
             let minutesAgo = Math.floor((Date.now() - eventTime) / 60000);
-
             let lat = event.geometry[0]?.coordinates[1] || 0;
             let lon = event.geometry[0]?.coordinates[0] || 0;
-            let weatherInfo = await fetchWeather(lat, lon);
-
             let div = document.createElement('div');
-            div.className = 'event';
+            div.className = 'item';
             div.innerHTML = `
                 <strong>${event.title}</strong><br>
-                Catégorie: ${event.categories.map(c => c.title).join(', ')}<br>
+                Catégorie: ${event.categories.map(c=>c.title).join(', ')}<br>
                 Localisation: ${lat.toFixed(2)}, ${lon.toFixed(2)}<br>
                 Date: ${eventTime.toLocaleString('fr-FR')}<br>
-                Il y a ${minutesAgo} minutes<br>
-                <span class="weather">${weatherInfo}</span>
+                Il y a ${minutesAgo} minutes
             `;
             container.appendChild(div);
         }
-    } catch (error) {
-        let container = document.getElementById('eventsContainer');
-        container.innerHTML = 'Erreur de chargement des données';
-        document.getElementById('loading-screen').style.display = 'none';
-        console.error(error);
+    } catch {
+        document.getElementById('eventsContainer').innerHTML = 'Impossible de charger les catastrophes';
     }
 }
 
-fetchEvents();
-setInterval(fetchEvents, 60000);
+// --- Initialisation et mise à jour ---
+async function updateAll() {
+    document.getElementById('loading-screen').style.display = 'flex';
+    await Promise.all([fetchWeather(), fetchInfos(), fetchEvents()]);
+    document.getElementById('loading-screen').style.display = 'none';
+}
+
+updateAll();
+setInterval(updateAll, 60000);
 </script>
 
 </body>
