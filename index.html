@@ -3,84 +3,101 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tracker Mondial : Météo, Infos et Catastrophes</title>
+<title>Catastrophes Mondiales</title>
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 <style>
-    body { 
-        font-family: Arial, sans-serif; 
-        margin: 0; 
-        padding: 0; 
-        background: black;
-        color: white;
-    }
-    h1, h2 { 
-        text-align: center; 
-        padding: 15px; 
-        margin: 0; 
-    }
-    h1 { background: rgba(0,0,0,0.7); }
-    h2 { background: rgba(30,30,30,0.7); margin-top: 10px; }
-
-    .container { 
-        max-width: 900px; 
-        margin: 20px auto; 
-        background: rgba(0, 0, 0, 0.8); 
-        padding: 20px; 
-        border-radius: 10px; 
-        box-shadow: 0px 0px 15px rgba(255, 255, 255, 0.3);
-    }
-    .item { 
-        padding: 15px; 
-        border-bottom: 1px solid #444; 
-        margin-bottom: 10px;
-        border-radius: 5px;
-        background: rgba(255,255,255,0.05);
-    }
-    .item:last-child { border-bottom: none; }
-    .small { font-size: 0.9em; color: #ccc; }
-
-    #loading-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        background: black;
-    }
-    .loader {
-        border: 8px solid rgba(255, 255, 255, 0.3);
-        border-top: 8px solid #fff;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        animation: spin 2s linear infinite;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+body { 
+    font-family: Arial, sans-serif; 
+    margin: 0; 
+    padding: 0; 
+    background: black;
+    color: white;
+}
+header { 
+    background: rgba(0,0,0,0.7); 
+    padding: 10px 15px; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+}
+header h1 { margin:0; font-size: 1.5em; }
+.flags img { width:30px; cursor:pointer; margin-left:10px; }
+.container { 
+    max-width: 900px; 
+    margin: 20px auto; 
+    background: rgba(0,0,0,0.8); 
+    padding: 20px; 
+    border-radius: 10px; 
+    box-shadow: 0px 0px 15px rgba(255,255,255,0.3);
+}
+.item { 
+    padding: 15px; 
+    border-bottom: 1px solid #444; 
+    margin-bottom: 10px;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.05);
+}
+.item:last-child { border-bottom: none; }
+.small { font-size: 0.9em; color: #ccc; }
+#loading-screen {
+    position: fixed;
+    top:0; left:0; width:100%; height:100%;
+    display:flex; justify-content:center; align-items:center;
+    z-index:9999; background:black;
+}
+.loader {
+    border:8px solid rgba(255,255,255,0.3);
+    border-top:8px solid #fff;
+    border-radius:50%;
+    width:50px;
+    height:50px;
+    animation: spin 2s linear infinite;
+}
+@keyframes spin {0% {transform:rotate(0deg);}100% {transform:rotate(360deg);}}
 </style>
 </head>
 <body>
 
 <div id="loading-screen"><div class="loader"></div></div>
 
-<h1>Tracker Mondial</h1>
+<header>
+    <h1 id="title">Catastrophes Mondiales</h1>
+    <div class="flags">
+        <img src="https://flagcdn.com/fr.svg" alt="FR" data-lang="fr">
+        <img src="https://flagcdn.com/gb.svg" alt="EN" data-lang="en">
+        <img src="https://flagcdn.com/es.svg" alt="ES" data-lang="es">
+        <img src="https://flagcdn.com/de.svg" alt="DE" data-lang="de">
+    </div>
+</header>
 
-<h2>Météo</h2>
+<h2 style="text-align:center;">Météo</h2>
 <div class="container" id="weatherContainer">Chargement météo...</div>
 
-<h2>Infos générales</h2>
-<div class="container" id="infoContainer">Chargement infos...</div>
-
-<h2>Catastrophes et Événements</h2>
+<h2 style="text-align:center;">Catastrophes et Événements</h2>
 <div class="container" id="eventsContainer">Chargement catastrophes...</div>
 
 <script>
+let lang = 'fr';
 const OPENWEATHER_API_KEY = 'VOTRE_CLE_OPENWEATHER'; // Ta clé OpenWeatherMap
 
-// --- Fonction météo ---
+const translations = {
+    fr: { title:'Catastrophes Mondiales', category:'Catégorie', location:'Localisation', date:'Date', minutes:'Il y a {minutes} minutes', loading:'Chargement...' },
+    en: { title:'Global Disasters', category:'Category', location:'Location', date:'Date', minutes:'{minutes} minutes ago', loading:'Loading...' },
+    es: { title:'Desastres Mundiales', category:'Categoría', location:'Ubicación', date:'Fecha', minutes:'Hace {minutes} minutos', loading:'Cargando...' },
+    de: { title:'Globale Katastrophen', category:'Kategorie', location:'Ort', date:'Datum', minutes:'Vor {minutes} Minuten', loading:'Lade...' },
+};
+
+// --- Changer la langue via les drapeaux ---
+document.querySelectorAll('.flags img').forEach(img => {
+    img.addEventListener('click', () => {
+        lang = img.dataset.lang;
+        document.getElementById('title').innerText = translations[lang].title;
+        fetchWeather();
+        fetchEvents();
+    });
+});
+
+// --- Météo ---
 async function fetchWeather() {
     try {
         const cities = [
@@ -89,10 +106,11 @@ async function fetchWeather() {
             {name:'Tokyo', lat:35.6895, lon:139.6917},
         ];
         const container = document.getElementById('weatherContainer');
+        container.innerHTML = translations[lang].loading;
         container.innerHTML = '';
         for (let city of cities) {
-            let response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&appid=${OPENWEATHER_API_KEY}&lang=fr&units=metric`);
-            let data = await response.json();
+            const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=${lang}`);
+            const data = await res.json();
             let div = document.createElement('div');
             div.className = 'item';
             div.innerHTML = `<strong>${city.name}</strong>: ${data.weather[0].description}, Température: ${data.main.temp}°C, Humidité: ${data.main.humidity}%`;
@@ -103,61 +121,42 @@ async function fetchWeather() {
     }
 }
 
-// --- Fonction infos générales ---
-async function fetchInfos() {
-    const container = document.getElementById('infoContainer');
-    container.innerHTML = '';
-    // Exemple : quelques infos générales mondiales (tu peux remplacer par API réelles)
-    const infos = [
-        {title:'Heure mondiale', detail: new Date().toLocaleString('fr-FR')},
-        {title:'Population mondiale', detail: '≈ 8 milliards'},
-        {title:'Dernières nouvelles', detail: 'Exemple d’info générale'}
-    ];
-    infos.forEach(info => {
-        let div = document.createElement('div');
-        div.className = 'item';
-        div.innerHTML = `<strong>${info.title}</strong><br><span class="small">${info.detail}</span>`;
-        container.appendChild(div);
-    });
-}
-
-// --- Fonction catastrophes ---
+// --- Catastrophes ---
 async function fetchEvents() {
     try {
-        let response = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events');
-        let data = await response.json();
         const container = document.getElementById('eventsContainer');
+        container.innerHTML = translations[lang].loading;
+        const res = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events');
+        const data = await res.json();
         container.innerHTML = '';
         for (let event of data.events) {
             let eventTime = new Date(event.geometry[0]?.date || event.geometry[0]?.time || Date.now());
-            let minutesAgo = Math.floor((Date.now() - eventTime) / 60000);
+            let minutesAgo = Math.floor((Date.now() - eventTime)/60000);
             let lat = event.geometry[0]?.coordinates[1] || 0;
             let lon = event.geometry[0]?.coordinates[0] || 0;
+
             let div = document.createElement('div');
             div.className = 'item';
             div.innerHTML = `
                 <strong>${event.title}</strong><br>
-                Catégorie: ${event.categories.map(c=>c.title).join(', ')}<br>
-                Localisation: ${lat.toFixed(2)}, ${lon.toFixed(2)}<br>
-                Date: ${eventTime.toLocaleString('fr-FR')}<br>
-                Il y a ${minutesAgo} minutes
+                ${translations[lang].category}: ${event.categories.map(c=>c.title).join(', ')}<br>
+                ${translations[lang].location}: ${lat.toFixed(2)}, ${lon.toFixed(2)}<br>
+                ${translations[lang].date}: ${eventTime.toLocaleString()}<br>
+                <span class="small">${translations[lang].minutes.replace('{minutes}', minutesAgo)}</span>
             `;
             container.appendChild(div);
         }
+        document.getElementById('loading-screen').style.display = 'none';
     } catch {
         document.getElementById('eventsContainer').innerHTML = 'Impossible de charger les catastrophes';
+        document.getElementById('loading-screen').style.display = 'none';
     }
 }
 
-// --- Initialisation et mise à jour ---
-async function updateAll() {
-    document.getElementById('loading-screen').style.display = 'flex';
-    await Promise.all([fetchWeather(), fetchInfos(), fetchEvents()]);
-    document.getElementById('loading-screen').style.display = 'none';
-}
-
-updateAll();
-setInterval(updateAll, 60000);
+// --- Initialisation ---
+fetchWeather();
+fetchEvents();
+setInterval(()=>{fetchWeather(); fetchEvents();},60000);
 </script>
 
 </body>
